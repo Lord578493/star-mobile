@@ -367,42 +367,6 @@ body.game  #wrap { transform: translateX(-300vw); }
 .skin-btn.free    { border: 1px solid #66ffaa; color: #66ffaa; }
 .skin-btn.equip   { border: 1px solid #ff88cc; color: #ff88cc; }
 .skin-btn.active  { border: 1px solid #4a6081; color: #4a6081; cursor: default; }
-.skin-btn.stars   { border: 1px solid #f5c400; color: #f5c400; background: rgba(245,196,0,.07); }
-.skin-btn.stars:active { background: rgba(245,196,0,.2); }
-
-.skin-premium-badge {
-    position: absolute; top: 8px; left: 10px;
-    font-size: 8px; letter-spacing: 1px; color: #f5c400;
-    text-shadow: 0 0 8px #f5c400;
-}
-.skin-card.premium { border-color: rgba(245,196,0,.35); }
-.skin-card.premium.equipped { border-color: #f5c400; box-shadow: 0 0 18px rgba(245,196,0,.3); }
-
-/* Stars payment modal */
-#stars-modal {
-    position: fixed; inset: 0; z-index: 6000;
-    background: rgba(1,5,16,.95);
-    display: none; align-items: center; justify-content: center;
-}
-#stars-modal.open { display: flex; }
-#stars-modal-box {
-    background: rgba(3,8,22,.99);
-    border: 1px solid rgba(245,196,0,.4); border-radius: 28px;
-    padding: 32px 28px; text-align: center; max-width: 290px; width: 90%;
-    box-shadow: 0 0 40px rgba(245,196,0,.1);
-}
-#stars-modal-icon { font-size: 52px; margin-bottom: 12px; }
-#stars-modal-name { color: #f5c400; font-size: 14px; letter-spacing: 3px; margin-bottom: 6px; }
-#stars-modal-desc { color: #8aabcc; font-size: 10px; letter-spacing: 1px; line-height: 1.7; margin-bottom: 6px; }
-#stars-modal-bonus { color: #ff88cc; font-size: 10px; font-weight: bold; margin-bottom: 20px; }
-#stars-modal-price {
-    display: inline-flex; align-items: center; gap: 6px;
-    color: #f5c400; font-size: 18px; font-weight: bold;
-    margin-bottom: 22px;
-}
-.stars-icon { font-size: 20px; }
-#stars-modal-note { color: #3a5570; font-size: 9px; letter-spacing: 1px; margin-bottom: 20px; line-height: 1.6; }
-.stars-modal-btns { display: flex; gap: 10px; justify-content: center; }
 
 /* ══════════════════════════════════════
    ТОСТ
@@ -472,22 +436,6 @@ body.game  #wrap { transform: translateX(-300vw); }
     <div class="sub">ВЫБЕРИ ОБЛИК СВОЕЙ ЗВЕЗДЫ</div>
     <div class="skins-grid" id="skins-grid"></div>
     <button class="btn" style="margin-top:20px;border-color:#4a6081;" onclick="closeSkinsPanel()">ЗАКРЫТЬ</button>
-</div>
-
-<!-- ══ МОДАЛКА ПОКУПКИ ЗА STARS ══ -->
-<div id="stars-modal">
-    <div id="stars-modal-box">
-        <div id="stars-modal-icon">⭐</div>
-        <div id="stars-modal-name">СКИН</div>
-        <div id="stars-modal-desc">Описание скина</div>
-        <div id="stars-modal-bonus"></div>
-        <div id="stars-modal-price"><span class="stars-icon">⭐</span><span id="stars-modal-price-val">99</span> Stars</div>
-        <div id="stars-modal-note">Оплата через Telegram Stars.<br>Скин сохранится навсегда.</div>
-        <div class="stars-modal-btns">
-            <button class="btn btn-gold" style="font-size:10px;padding:11px 22px;" onclick="confirmStarsPurchase()">КУПИТЬ ⭐</button>
-            <button class="btn" style="font-size:10px;padding:11px 18px;border-color:#1a3a77;" onclick="closeStarsModal()">ОТМЕНА</button>
-        </div>
-    </div>
 </div>
 
 <!-- ══ ПАНЕЛЬ ЗАДАНИЙ (оверлей) ══ -->
@@ -561,6 +509,7 @@ body.game  #wrap { transform: translateX(-300vw); }
             <button class="btn" style="margin:0;font-size:9px;padding:11px 8px;border-color:#ffcc66;color:#ffcc66;" onclick="openAchievements()">🏆 ДОСТИЖЕНИЯ</button>
             <button class="btn" style="margin:0;font-size:9px;padding:11px 8px;border-color:#66ffaa;color:#66ffaa;" onclick="openQuests()">📋 ЗАДАНИЯ</button>
         </div>
+        <a href="https://www.donationalerts.com/r/lkisl" target="_blank" style="margin-top:16px;display:inline-flex;align-items:center;gap:7px;padding:10px 22px;border:1px solid rgba(255,180,60,.4);border-radius:30px;color:rgba(255,180,60,.7);font-size:9px;letter-spacing:2px;text-decoration:none;font-family:Georgia,serif;transition:border-color .2s,color .2s;" onmouseover="this.style.color='#ffb43c';this.style.borderColor='rgba(255,180,60,.8)'" onmouseout="this.style.color='rgba(255,180,60,.7)';this.style.borderColor='rgba(255,180,60,.4)'">☕ ПОДДЕРЖАТЬ РАЗРАБОТЧИКА</a>
     </div>
 
     <!-- ③ КАРТА СОЗВЕЗДИЙ -->
@@ -756,7 +705,7 @@ const GAME_DATA = {
             name: 'КЛАССИКА',
             desc: 'Стандартная звезда',
             bonus: null,
-            price: 0,
+            price: 0,           // бесплатно
             color: null,
             glowColor: null,
             points: 5, OR: 95, IR: 40, DEPTH: 32,
@@ -769,7 +718,7 @@ const GAME_DATA = {
             desc: 'Богатство и мощь',
             bonus: '+100 к клику и авто-сбору',
             bonusApply: S => { S.clickPower += 100; S.passiveIncome += 100; },
-            price: 0,
+            price: 5000,
             color: '#ffcc44',
             glowColor: 'rgba(255,200,50,.6)',
             points: 5, OR: 98, IR: 36, DEPTH: 36,
@@ -782,7 +731,7 @@ const GAME_DATA = {
             desc: 'Осколок далёкой галактики',
             bonus: '+50 к клику, ×1.2 к осколкам',
             bonusApply: S => { S.clickPower += 50; S.shards = Math.ceil(S.shards * 1.2); },
-            price: 0,
+            price: 25000,
             color: '#66eeff',
             glowColor: 'rgba(100,220,255,.5)',
             points: 6, OR: 92, IR: 54, DEPTH: 28,
@@ -795,23 +744,20 @@ const GAME_DATA = {
             desc: 'Рождена из взрыва звезды',
             bonus: '+200 к авто-сбору',
             bonusApply: S => { S.passiveIncome += 200; },
-            price: 0,
+            price: 100000,
             color: '#ff4466',
             glowColor: 'rgba(255,60,80,.6)',
             points: 8, OR: 95, IR: 44, DEPTH: 30,
             lineWidth: 2,
             particles: { count: 12, size: 5, shape: 'spark', trail: true },
         },
-        // ══ ПРЕМИУМ СКИНЫ ЗА TELEGRAM STARS ══
         {
             id: 'blackhole',
             name: 'ЧЁРНАЯ ДЫРА',
             desc: 'Поглощает всё на своём пути',
             bonus: '+500 к клику и авто-сбору',
             bonusApply: S => { S.clickPower += 500; S.passiveIncome += 500; },
-            price: 0,
-            starsPrice: 75,
-            premium: true,
+            price: 500000,
             color: '#cc44ff',
             glowColor: 'rgba(180,30,255,.5)',
             points: 10, OR: 98, IR: 30, DEPTH: 42,
@@ -824,9 +770,7 @@ const GAME_DATA = {
             desc: 'Вращающаяся нейтронная звезда',
             bonus: '×2 к силе вспышек навсегда',
             bonusApply: S => { S.flashMult = (S.flashMult || 1) * 2; },
-            price: 0,
-            starsPrice: 99,
-            premium: true,
+            price: 2000000,
             color: '#00ffcc',
             glowColor: 'rgba(0,255,180,.45)',
             points: 4, OR: 96, IR: 20, DEPTH: 50,
@@ -839,9 +783,7 @@ const GAME_DATA = {
             desc: 'Легендарный облик для избранных',
             bonus: '+2000 к клику, +1000 к авто-сбору',
             bonusApply: S => { S.clickPower += 2000; S.passiveIncome += 1000; },
-            price: 0,
-            starsPrice: 249,
-            premium: true,
+            price: 10000000,
             color: '#ff88ff',
             glowColor: 'rgba(255,100,255,.55)',
             points: 7, OR: 100, IR: 38, DEPTH: 38,
@@ -1673,9 +1615,9 @@ function renderSkinsPanel() {
         const equipped = S.equippedSkin === skin.id;
 
         const card = document.createElement('div');
-        card.className = 'skin-card' + (equipped ? ' equipped' : '') + (skin.premium ? ' premium' : '');
+        card.className = 'skin-card' + (equipped ? ' equipped' : '');
 
-        // Превью — canvas создаём первым и НЕ трогаем innerHTML после
+        // Превью — canvas создаём и добавляем первым
         const previewCanvas = document.createElement('canvas');
         previewCanvas.className = 'skin-preview';
         previewCanvas.width  = 80;
@@ -1693,19 +1635,18 @@ function renderSkinsPanel() {
         bonus.className = 'skin-bonus';
         bonus.textContent = skin.bonus || 'Базовый скин';
 
-        const btnLabel = equipped ? 'НАДЕТА' : owned ? 'НАДЕТЬ' : skin.premium ? `⭐ ${skin.starsPrice} STARS` : 'ПОЛУЧИТЬ';
-        const btnClass = equipped ? 'active'  : owned ? 'equip'  : skin.premium ? 'stars' : 'free';
+        const btnLabel = equipped ? 'НАДЕТА' : owned ? 'НАДЕТЬ' : skin.price === 0 ? 'ПОЛУЧИТЬ' : `${fmtNum(skin.price)} ⭐`;
+        const btnClass = equipped ? 'active'  : owned ? 'equip'  : 'free';
         const btn = document.createElement('button');
         btn.className = `skin-btn ${btnClass}`;
         btn.textContent = btnLabel;
+        if (!owned && !equipped && skin.price > 0 && S.stardust < skin.price) {
+            btn.style.opacity = '0.4';
+            btn.style.cursor  = 'not-allowed';
+        }
         if (!equipped) btn.onclick = () => handleSkinBtn(skin.id);
 
-        if (skin.premium) {
-            const badge = document.createElement('div');
-            badge.className = 'skin-premium-badge';
-            badge.textContent = '★ PREMIUM';
-            card.appendChild(badge);
-        }
+        card.appendChild(previewCanvas);
         card.appendChild(name);
         card.appendChild(desc);
         card.appendChild(bonus);
@@ -1759,92 +1700,24 @@ function drawSkinPreview(canvas, skin) {
     ctx.fill();
 }
 
-let pendingStarsSkinId = null;
-
 function handleSkinBtn(id) {
     const skin  = GAME_DATA.skins.find(s => s.id === id);
     const owned = S.ownedSkins.includes(id);
     if (!skin) return;
 
     if (!owned) {
-        if (skin.premium) {
-            // Показываем модалку покупки за Stars
-            openStarsModal(id);
+        if (skin.price > 0 && S.stardust < skin.price) {
+            showToast(`МАЛО ПЫЛИ!\nНужно ${fmtNum(skin.price)} ⭐`);
             return;
         }
-        // Бесплатный — получаем сразу + применяем бонус
+        if (skin.price > 0) S.stardust -= skin.price;
         S.ownedSkins.push(id);
         if (skin.bonusApply) skin.bonusApply(S);
         showToast(`✨ СКИН ПОЛУЧЕН!\n${skin.name}${skin.bonus ? '\n' + skin.bonus : ''}`);
     }
-    // Надеваем
     S.equippedSkin = id;
     renderSkinsPanel();
     render();
-}
-
-// ════════════════════════════════════════════════════════════
-//  ПОКУПКА ЗА TELEGRAM STARS
-// ════════════════════════════════════════════════════════════
-
-function openStarsModal(skinId) {
-    const skin = GAME_DATA.skins.find(s => s.id === skinId);
-    if (!skin) return;
-    pendingStarsSkinId = skinId;
-
-    // Иконки для каждого скина
-    const icons = { blackhole: '🌑', pulsar: '💫', nebula_god: '🌸' };
-    el('stars-modal-icon').textContent  = icons[skinId] || '✨';
-    el('stars-modal-name').textContent  = skin.name;
-    el('stars-modal-desc').textContent  = skin.desc;
-    el('stars-modal-bonus').textContent = skin.bonus || '';
-    el('stars-modal-price-val').textContent = skin.starsPrice;
-    el('stars-modal').classList.add('open');
-}
-
-function closeStarsModal() {
-    el('stars-modal').classList.remove('open');
-    pendingStarsSkinId = null;
-}
-
-function confirmStarsPurchase() {
-    const skin = GAME_DATA.skins.find(s => s.id === pendingStarsSkinId);
-    if (!skin) return;
-
-    // Telegram Mini App API
-    const tg = window.Telegram?.WebApp;
-    if (tg && tg.openInvoice) {
-        // В реальном боте: передаёшь invoice_url от своего бота
-        // Здесь — заглушка с нужным payload
-        tg.openInvoice(`https://t.me/invoice/skin_${skin.id}_${skin.starsPrice}stars`, (status) => {
-            if (status === 'paid') {
-                grantPremiumSkin(skin.id);
-            } else if (status === 'cancelled') {
-                showToast('ПОКУПКА ОТМЕНЕНА');
-            } else {
-                showToast('ОШИБКА ОПЛАТЫ\nПопробуй ещё раз');
-            }
-            closeStarsModal();
-        });
-    } else {
-        // Режим разработки — вне Telegram (для тестирования)
-        closeStarsModal();
-        showToast('💡 РЕЖИМ ТЕСТА\nВ Telegram здесь\nоткроется оплата Stars');
-        // Для теста раскомментируй строку ниже:
-        // grantPremiumSkin(skin.id);
-    }
-}
-
-function grantPremiumSkin(skinId) {
-    const skin = GAME_DATA.skins.find(s => s.id === skinId);
-    if (!skin || S.ownedSkins.includes(skinId)) return;
-    S.ownedSkins.push(skinId);
-    if (skin.bonusApply) skin.bonusApply(S);
-    S.equippedSkin = skinId;
-    saveState();
-    renderSkinsPanel();
-    render();
-    showToast(`🌟 PREMIUM СКИН!\n${skin.name}\n${skin.bonus || ''}`);
 }
 
 // ════════════════════════════════════════════════════════════
