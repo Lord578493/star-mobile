@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Nebula Mobile v4.0</title>
+<style>
+/* ══════════════════════════════════════
+   RESET & BASE
+══════════════════════════════════════ */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background: #010510;
+    font-family: Georgia, serif;
+    overflow: hidden;
+    height: 100vh; width: 100vw;
+    user-select: none; -webkit-user-select: none;
+}
+
+/* ══════════════════════════════════════
+   НАВИГАЦИЯ — 4 экрана в ряд
+   shop=0  menu=-100vw  map=-200vw  game=-300vw
+══════════════════════════════════════ */
+#wrap {
+    display: flex;
+    width: 400vw; height: 100vh;
+    position: relative; z-index: 1;
+    transition: transform .5s cubic-bezier(.4,0,.2,1);
+}
+body.shop  #wrap { transform: translateX(0); }
+body.menu  #wrap { transform: translateX(-100vw); }
+body.map   #wrap { transform: translateX(-200vw); }
+body.game  #wrap { transform: translateX(-300vw); }
+
+.screen {
+    width: 100vw; height: 100vh; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px;
+}
+
+/* ══════════════════════════════════════
+   ФОН
+══════════════════════════════════════ */
+#bg-stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+/* ══════════════════════════════════════
+   HUD
+══════════════════════════════════════ */
+#hud {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 15px 25px;
+    background: linear-gradient(to bottom, rgba(1,5,16,.97) 50%, transparent);
+    pointer-events: none;
+}
+#hud-dust  { font-size: 30px; font-weight: bold; color: #ddeeff; text-shadow: 0 0 15px #4488bb; }
+#hud-label { font-size: 9px; color: #4a6081; letter-spacing: 3px; margin-bottom: 2px; }
+#hud-shards { font-size: 10px; color: #aa66ff; letter-spacing: 2px; font-weight: bold; text-shadow: 0 0 10px #aa66ff; margin-top: 3px; }
+#hud-brand { font-size: 10px; color: #1e304d; letter-spacing: 3px; text-align: right; line-height: 1.6; }
+
+/* Индикатор вспышки */
+#flash-bar {
+    position: fixed; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, #ff66cc, #ffcc66, #66ffaa);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform .1s linear;
+    z-index: 200;
+}
+#flash-label {
+    position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+    color: #ffcc66; font-size: 10px; letter-spacing: 3px;
+    text-shadow: 0 0 10px #ffcc66;
+    opacity: 0; pointer-events: none; z-index: 200;
+    transition: opacity .3s;
+}
+#flash-label.show { opacity: 1; }
+
+/* ══════════════════════════════════════
+   КНОПКИ
+══════════════════════════════════════ */
+.btn {
+    padding: 13px 28px;
+    border: 1px solid #1a3a77; border-radius: 30px;
+    color: #5588bb; font-size: 11px;
+    letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; background: transparent;
+    font-family: Georgia, serif; margin: 5px;
+    transition: border-color .2s, color .2s, transform .1s;
+}
+.btn:active        { border-color: #4488cc; color: #aaccee; transform: scale(.95); }
+.btn-sm            { padding: 9px 11px; font-size: 9px; }
+.btn-purple        { border-color: #aa66ff; color: #aa66ff; }
+.btn-gold          { border-color: #ffcc66; color: #ffcc66; }
+.btn-reset {
+    position: fixed; bottom: 15px; right: 15px; z-index: 3000;
+    padding: 8px 12px; border-radius: 50%; font-size: 18px;
+    border: 1px solid rgba(26,58,119,.3); color: rgba(68,136,187,.35);
+    background: rgba(1,5,16,.8); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+/* ══════════════════════════════════════
+   МЕНЮ
+══════════════════════════════════════ */
+#menu-count { font-size: 40px; font-weight: bold; color: #ddeeff; text-shadow: 0 0 15px #4488bb; margin-bottom: 2px; }
+#lvl-info   { font-size: 10px; color: #5588bb; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 8px; }
+#exp-bar-wrap { width: 200px; height: 4px; background: rgba(26,58,119,.2); border-radius: 2px; overflow: hidden; margin-bottom: 22px; }
+#exp-bar-fill { height: 100%; width: 0%; background: #4488bb; box-shadow: 0 0 10px #4488bb; transition: width .3s; }
+#star-canvas  { cursor: grab; display: block; margin: 5px 0; transition: transform .1s; }
+
+/* ══════════════════════════════════════
+   МАГАЗИН
+══════════════════════════════════════ */
+.shop-title { color: #ddeeff; letter-spacing: 5px; margin-bottom: 18px; font-size: 18px; }
+.shop-card {
+    background: rgba(10,25,60,.4);
+    border: 1px solid #1a3a77; border-radius: 20px;
+    padding: 14px 16px; width: 90%; max-width: 340px; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: space-between;
+    backdrop-filter: blur(10px);
+}
+.shop-card-name  { color: #ddeeff; font-size: 13px; margin-bottom: 3px; }
+.shop-card-price { color: #4488bb; font-size: 11px; }
+
+/* Сверхновая */
+#supernova-panel {
+    display: none;
+    margin-top: 12px; padding: 18px;
+    border: 1px dashed #aa66ff; border-radius: 20px;
+    width: 90%; max-width: 340px;
+    background: rgba(170,102,255,.05); text-align: center;
+}
+#supernova-panel.visible { display: block; animation: neon-glow 2s infinite; }
+@keyframes neon-glow {
+    0%,100% { border-color:#aa66ff; box-shadow:0 0 6px #aa66ff; }
+    50%      { border-color:#ff66cc; box-shadow:0 0 20px #ff66cc; }
+}
+
+/* ══════════════════════════════════════
+   КАРТА СОЗВЕЗДИЙ
+══════════════════════════════════════ */
+#map-screen { position: relative; }
+#map-canvas { display: block; cursor: pointer; }
+.map-tooltip {
+    position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+    background: rgba(3,8,22,.95); border: 1px solid #1a3a77; border-radius: 16px;
+    padding: 12px 20px; color: #8aabcc; font-size: 11px; letter-spacing: 1px;
+    text-align: center; pointer-events: none;
+    opacity: 0; transition: opacity .3s;
+}
+.map-tooltip.show { opacity: 1; }
+
+/* ══════════════════════════════════════
+   ЭКРАН СОЗВЕЗДИЯ
+══════════════════════════════════════ */
+#const-container { position: relative; width: 320px; height: 380px; }
+#const-canvas    { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+#stars-layer     { position: absolute; inset: 0; z-index: 2; }
+
+.star-node {
+    position: absolute; transform: translate(-50%,-50%);
+    text-align: center; width: 72px; cursor: pointer;
+}
+.star-node svg {
+    width: 22px; height: 22px; fill: #0d1520;
+    display: block; margin: 0 auto;
+    transition: fill .5s, filter .5s, opacity .5s;
+    opacity: 0.35;
+}
+.star-node.active svg {
+    fill: #ddeeff; opacity: 1;
+    filter: drop-shadow(0 0 8px #4488bb);
+}
+.star-node .star-price {
+    color: rgba(255,255,255,0.35); font-size: 9px; margin-top: 4px;
+    font-family: sans-serif; font-weight: bold;
+}
+.star-node.active .star-price {
+    color: #fff; text-shadow: 1px 1px 2px #000;
+}
+
+/* ══════════════════════════════════════
+   ДИАЛОГ СБРОСА
+══════════════════════════════════════ */
+#reset-dialog {
+    position: fixed; inset: 0; z-index: 4000;
+    background: rgba(1,5,16,.92);
+    display: none; align-items: center; justify-content: center;
+}
+#reset-dialog.open { display: flex; }
+#reset-dialog-box {
+    background: rgba(3,8,22,.98);
+    border: 1px solid #1a3a77; border-radius: 24px;
+    padding: 30px 28px; text-align: center; max-width: 280px;
+}
+#reset-dialog-box p { color: #8aabcc; font-size: 12px; letter-spacing: 1px; line-height: 1.7; margin-bottom: 20px; }
+#reset-dialog-box .warn { color: #ff6666; font-size: 10px; margin-bottom: 20px; }
+
+/* ══════════════════════════════════════
+   ДОСТИЖЕНИЯ
+══════════════════════════════════════ */
+#achievements-panel {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(1,5,16,.97);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding: 75px 16px 20px;
+    overflow-y: auto;
+}
+#achievements-panel.open { display: flex; }
+#achievements-panel h2   { color: #ffcc66; letter-spacing: 5px; margin-bottom: 4px; font-size: 16px; }
+#achievements-panel .sub { color: #5588bb; font-size: 10px; letter-spacing: 2px; margin-bottom: 20px; }
+
+.ach-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; max-width: 360px; }
+
+.ach-card {
+    background: rgba(10,25,60,.5);
+    border: 1px solid #1a3a77; border-radius: 16px;
+    padding: 14px 12px; width: 160px; text-align: center;
+    transition: border-color .3s, box-shadow .3s;
+    position: relative; overflow: hidden;
+}
+.ach-card.unlocked {
+    border-color: #ffcc66;
+    box-shadow: 0 0 12px rgba(255,204,102,.25);
+}
+.ach-card.locked { opacity: .35; }
+.ach-card .ach-icon  { font-size: 26px; margin-bottom: 6px; }
+.ach-card .ach-name  { color: #ddeeff; font-size: 10px; letter-spacing: 1px; margin-bottom: 4px; }
+.ach-card .ach-desc  { color: #5588bb; font-size: 9px; line-height: 1.4; margin-bottom: 6px; }
+.ach-card .ach-bonus { color: #ffcc66; font-size: 9px; font-weight: bold; }
+.ach-card.locked .ach-bonus { color: #4a6081; }
+
+/* Нотификация достижения — снизу экрана */
+#ach-notify {
+    position: fixed; bottom: -80px; left: 50%; transform: translateX(-50%);
+    background: rgba(3,8,22,.97); border: 1px solid #ffcc66;
+    border-radius: 20px; padding: 12px 22px;
+    display: flex; align-items: center; gap: 12px;
+    z-index: 3000; pointer-events: none;
+    transition: bottom .4s cubic-bezier(.2,0,.2,1);
+    white-space: nowrap;
+}
+#ach-notify.show { bottom: 30px; }
+#ach-notify .ach-n-icon { font-size: 22px; }
+#ach-notify .ach-n-text { text-align: left; }
+#ach-notify .ach-n-title { color: #ffcc66; font-size: 10px; letter-spacing: 2px; }
+#ach-notify .ach-n-name  { color: #ddeeff; font-size: 12px; letter-spacing: 1px; }
+
+/* ══════════════════════════════════════
+   ДЕРЕВО ОСКОЛКОВ
+══════════════════════════════════════ */
+#shard-tree {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(1,5,16,.97);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding: 80px 20px 20px;
+    overflow-y: auto;
+}
+#shard-tree.open { display: flex; }
+#shard-tree h2   { color: #aa66ff; letter-spacing: 5px; margin-bottom: 6px; font-size: 16px; }
+#shard-tree .sub { color: #5588bb; font-size: 10px; letter-spacing: 2px; margin-bottom: 25px; }
+
+.tree-row { display: flex; gap: 12px; margin-bottom: 12px; justify-content: center; flex-wrap: wrap; }
+.tree-node {
+    background: rgba(10,25,60,.5);
+    border: 1px solid #1a3a77; border-radius: 16px;
+    padding: 14px 16px; width: 150px; text-align: center;
+    cursor: pointer; transition: border-color .2s, box-shadow .2s;
+    position: relative;
+}
+.tree-node:hover         { border-color: #4488cc; }
+.tree-node.purchased     { border-color: #aa66ff; box-shadow: 0 0 10px rgba(170,102,255,.3); cursor: default; }
+.tree-node.locked        { opacity: .35; cursor: not-allowed; }
+.tree-node .node-icon    { font-size: 22px; margin-bottom: 6px; }
+.tree-node .node-name    { color: #ddeeff; font-size: 10px; letter-spacing: 1px; margin-bottom: 4px; }
+.tree-node .node-desc    { color: #5588bb; font-size: 9px; line-height: 1.4; margin-bottom: 6px; }
+.tree-node .node-cost    { color: #aa66ff; font-size: 10px; font-weight: bold; }
+.tree-node.purchased .node-cost { color: #66ffaa; }
+
+/* ══════════════════════════════════════
+   ЕЖЕДНЕВНЫЕ ЗАДАНИЯ
+══════════════════════════════════════ */
+#quests-panel {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(1,5,16,.97);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding: 75px 16px 20px; overflow-y: auto;
+}
+#quests-panel.open { display: flex; }
+#quests-panel h2   { color: #66ffaa; letter-spacing: 5px; margin-bottom: 4px; font-size: 16px; }
+#quests-panel .sub { color: #5588bb; font-size: 10px; letter-spacing: 2px; margin-bottom: 6px; }
+#quests-timer      { color: #4a6081; font-size: 9px; letter-spacing: 2px; margin-bottom: 20px; }
+
+.quest-card {
+    background: rgba(10,25,60,.5);
+    border: 1px solid #1a3a77; border-radius: 18px;
+    padding: 14px 16px; width: 100%; max-width: 340px;
+    margin-bottom: 10px; position: relative; overflow: hidden;
+}
+.quest-card.done   { border-color: #66ffaa; box-shadow: 0 0 10px rgba(102,255,170,.2); }
+.quest-card.claimed { opacity: .4; }
+
+.quest-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.quest-icon   { font-size: 22px; flex-shrink: 0; }
+.quest-name   { color: #ddeeff; font-size: 11px; letter-spacing: 1px; }
+.quest-desc   { color: #5588bb; font-size: 9px; margin-top: 2px; }
+
+.quest-progress-wrap { height: 4px; background: rgba(26,58,119,.3); border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
+.quest-progress-fill { height: 100%; background: #66ffaa; border-radius: 2px; transition: width .4s; }
+
+.quest-footer { display: flex; align-items: center; justify-content: space-between; }
+.quest-reward { color: #66ffaa; font-size: 10px; font-weight: bold; }
+.quest-claim  {
+    padding: 6px 14px; border: 1px solid #66ffaa; border-radius: 20px;
+    color: #66ffaa; font-size: 9px; letter-spacing: 1px;
+    background: transparent; cursor: pointer; font-family: Georgia, serif;
+    transition: background .2s, color .2s;
+}
+.quest-claim:active { background: #66ffaa; color: #010510; }
+.quest-claim:disabled { opacity: .3; cursor: default; border-color: #1a3a77; color: #1a3a77; }
+
+/* ══════════════════════════════════════
+   СКИНЫ ЗВЕЗДЫ
+══════════════════════════════════════ */
+#skins-panel {
+    position: fixed; inset: 0; z-index: 500;
+    background: rgba(1,5,16,.97);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: flex-start;
+    padding: 75px 16px 20px; overflow-y: auto;
+}
+#skins-panel.open { display: flex; }
+#skins-panel h2   { color: #ff88cc; letter-spacing: 5px; margin-bottom: 4px; font-size: 16px; }
+#skins-panel .sub { color: #5588bb; font-size: 10px; letter-spacing: 2px; margin-bottom: 20px; }
+
+.skins-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; width: 100%; max-width: 360px; }
+
+.skin-card {
+    background: rgba(10,25,60,.5);
+    border: 1px solid #1a3a77; border-radius: 20px;
+    padding: 16px 12px; width: 155px; text-align: center;
+    cursor: pointer; transition: border-color .25s, box-shadow .25s, transform .1s;
+    position: relative;
+}
+.skin-card:active       { transform: scale(.95); }
+.skin-card.equipped     { border-color: #ff88cc; box-shadow: 0 0 14px rgba(255,136,204,.3); }
+.skin-card.equipped::after {
+    content: '✓ НАДЕТА'; position: absolute; top: 8px; right: 10px;
+    color: #ff88cc; font-size: 8px; letter-spacing: 1px;
+}
+
+.skin-preview { width: 100px; height: 100px; margin: 0 auto 10px; display: block; }
+.skin-name    { color: #ddeeff; font-size: 11px; letter-spacing: 1px; margin-bottom: 4px; }
+.skin-desc    { color: #5588bb; font-size: 9px; line-height: 1.4; margin-bottom: 8px; }
+.skin-bonus   { color: #ff88cc; font-size: 9px; font-weight: bold; margin-bottom: 10px; }
+.skin-btn {
+    padding: 6px 16px; border-radius: 20px; font-size: 9px; letter-spacing: 1px;
+    font-family: Georgia, serif; cursor: pointer; transition: .2s;
+    background: transparent;
+}
+.skin-btn.free    { border: 1px solid #66ffaa; color: #66ffaa; }
+.skin-btn.equip   { border: 1px solid #ff88cc; color: #ff88cc; }
+.skin-btn.active  { border: 1px solid #4a6081; color: #4a6081; cursor: default; }
+
+/* ══════════════════════════════════════
+   ТОСТ
+══════════════════════════════════════ */
+#toast {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: rgba(3,8,22,.97); border: 1px solid #152b55; border-radius: 20px;
+    padding: 14px 24px; color: #8aabcc; font-size: 12px;
+    opacity: 0; pointer-events: none; transition: opacity .3s;
+    z-index: 2000; text-align: center; line-height: 1.6;
+}
+#toast.show { opacity: 1; }
+</style>
+</head>
+<body class="menu">
+
+<canvas id="bg-stars"></canvas>
+
+<!-- Индикатор звёздной вспышки -->
+<div id="flash-bar"></div>
+<div id="flash-label">✦ ЗВЁЗДНАЯ ВСПЫШКА ✦</div>
+
+<div id="hud">
+    <div>
+        <div id="hud-label">✦ ПЫЛЬ</div>
+        <div id="hud-dust">0</div>
+        <div id="hud-shards">ОСКОЛКИ: <span id="shard-val">0</span> (x<span id="mult-val">1.0</span>)</div>
+    </div>
+    <div id="hud-brand">NEBULA<br>MOBILE</div>
+</div>
+
+<button class="btn-reset" onclick="openResetDialog()">↺</button>
+<div id="toast"></div>
+
+<!-- ══ УВЕДОМЛЕНИЕ О ДОСТИЖЕНИИ ══ -->
+<div id="ach-notify">
+    <div class="ach-n-icon" id="ach-n-icon">🏆</div>
+    <div class="ach-n-text">
+        <div class="ach-n-title">ДОСТИЖЕНИЕ РАЗБЛОКИРОВАНО</div>
+        <div class="ach-n-name" id="ach-n-name"></div>
+    </div>
+</div>
+
+<!-- ══ ПАНЕЛЬ ДОСТИЖЕНИЙ (оверлей) ══ -->
+<div id="achievements-panel">
+    <h2>ДОСТИЖЕНИЯ</h2>
+    <div class="sub">РАЗБЛОКИРОВАНО: <span id="ach-count">0</span> / <span id="ach-total">0</span></div>
+    <div class="ach-grid" id="ach-grid"></div>
+    <button class="btn" style="margin-top:20px;border-color:#4a6081;" onclick="closeAchievements()">ЗАКРЫТЬ</button>
+</div>
+
+<!-- ══ ДИАЛОГ СБРОСА ══ -->
+<div id="reset-dialog">
+    <div id="reset-dialog-box">
+        <p>СБРОСИТЬ ВЕСЬ<br>ПРОГРЕСС?</p>
+        <div class="warn">Пыль, уровень и созвездия<br>будут удалены безвозвратно.</div>
+        <div style="display:flex;gap:10px;justify-content:center;">
+            <button class="btn btn-purple" style="font-size:10px;padding:10px 20px;" onclick="confirmReset()">ДА</button>
+            <button class="btn" style="font-size:10px;padding:10px 20px;" onclick="closeResetDialog()">ОТМЕНА</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ ПАНЕЛЬ СКИНОВ (оверлей) ══ -->
+<div id="skins-panel">
+    <h2>СКИНЫ ЗВЕЗДЫ</h2>
+    <div class="sub">ВЫБЕРИ ОБЛИК СВОЕЙ ЗВЕЗДЫ</div>
+    <div class="skins-grid" id="skins-grid"></div>
+    <button class="btn" style="margin-top:20px;border-color:#4a6081;" onclick="closeSkinsPanel()">ЗАКРЫТЬ</button>
+</div>
+
+<!-- ══ ПАНЕЛЬ ЗАДАНИЙ (оверлей) ══ -->
+<div id="quests-panel">
+    <h2>ЗАДАНИЯ</h2>
+    <div class="sub">ОБНОВЛЕНИЕ ЧЕРЕЗ <span id="quests-timer">—</span></div>
+    <div id="quests-list"></div>
+    <button class="btn" style="margin-top:20px;border-color:#4a6081;" onclick="closeQuests()">ЗАКРЫТЬ</button>
+</div>
+
+<!-- ══ ДЕРЕВО ОСКОЛКОВ (оверлей) ══ -->
+<div id="shard-tree">
+    <h2>ОСКОЛКИ ЗВЁЗД</h2>
+    <div class="sub">ОСКОЛКОВ: <span id="tree-shard-count">0</span></div>
+    <div id="tree-nodes"></div>
+    <button class="btn btn-purple" style="margin-top:20px;" onclick="closeShardTree()">ЗАКРЫТЬ</button>
+</div>
+
+<div id="wrap">
+
+    <!-- ① МАГАЗИН -->
+    <div class="screen" id="shop-screen">
+        <h2 class="shop-title">НЕБЕСНАЯ ЛАВКА</h2>
+
+        <div class="shop-card">
+            <div>
+                <div class="shop-card-name">СИЛА КЛИКА</div>
+                <div class="shop-card-price" id="price-click">— ⭐</div>
+            </div>
+            <div style="display:flex;gap:5px;">
+                <button class="btn btn-sm" onclick="buyUpgrade('click')">КУПИТЬ</button>
+                <button class="btn btn-sm" onclick="buyMax('click')">MAX</button>
+            </div>
+        </div>
+
+        <div class="shop-card">
+            <div>
+                <div class="shop-card-name">АВТО-СБОР</div>
+                <div class="shop-card-price" id="price-auto">— ⭐</div>
+            </div>
+            <div style="display:flex;gap:5px;">
+                <button class="btn btn-sm" onclick="buyUpgrade('auto')">КУПИТЬ</button>
+                <button class="btn btn-sm" onclick="buyMax('auto')">MAX</button>
+            </div>
+        </div>
+
+        <div id="supernova-panel">
+            <div style="color:#aa66ff;font-size:11px;margin-bottom:5px;">✦ СВЕРХНОВАЯ ДОСТУПНА</div>
+            <div style="color:#8aabcc;font-size:9px;margin-bottom:12px;">
+                Сброс даст <span id="potential-shards" style="color:#fff;font-weight:bold;">0</span> осколков
+            </div>
+            <button class="btn btn-purple" style="width:100%;font-size:9px;" onclick="triggerSupernova()">ВЗОРВАТЬ ЗВЕЗДУ</button>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:center;">
+            <button class="btn btn-gold" style="font-size:9px;" onclick="openShardTree()">ОСКОЛКИ 💎</button>
+            <button class="btn" style="border-color:#ff88cc;color:#ff88cc;font-size:9px;" onclick="openSkinsPanel()">СКИНЫ ✨</button>
+            <button class="btn" style="border-color:#4a6081;" onclick="goMenu()">НАЗАД</button>
+        </div>
+    </div>
+
+    <!-- ② МЕНЮ -->
+    <div class="screen" id="menu-screen">
+        <div id="menu-count">0</div>
+        <div id="lvl-info">УРОВЕНЬ <span id="lvl-val">1</span> <span id="lvl-bonus" style="color:#ffcc66;font-size:9px;letter-spacing:1px;">×1.00</span></div>
+        <div id="exp-bar-wrap"><div id="exp-bar-fill"></div></div>
+        <canvas id="star-canvas" width="300" height="300" style="margin:8px 0;width:min(300px, 44vmin);height:min(300px, 44vmin);"></canvas>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;max-width:280px;">
+            <button class="btn" style="margin:0;font-size:9px;padding:11px 8px;" onclick="goMap()">✦ КАРТА</button>
+            <button class="btn" style="margin:0;font-size:9px;padding:11px 8px;" onclick="goShop()">✨ ЛАВКА</button>
+            <button class="btn" style="margin:0;font-size:9px;padding:11px 8px;border-color:#ffcc66;color:#ffcc66;" onclick="openAchievements()">🏆 ДОСТИЖЕНИЯ</button>
+            <button class="btn" style="margin:0;font-size:9px;padding:11px 8px;border-color:#66ffaa;color:#66ffaa;" onclick="openQuests()">📋 ЗАДАНИЯ</button>
+        </div>
+    </div>
+
+    <!-- ③ КАРТА СОЗВЕЗДИЙ -->
+    <div class="screen" id="map-screen">
+        <div style="color:#6a8bb3;font-size:13px;letter-spacing:5px;margin-bottom:16px;">ЗВЁЗДНАЯ КАРТА</div>
+        <canvas id="map-canvas" width="320" height="380"></canvas>
+        <div id="map-tooltip" class="map-tooltip"></div>
+        <button class="btn" style="margin-top:14px;" onclick="goMenu()">НАЗАД</button>
+    </div>
+
+    <!-- ④ ЭКРАН СОЗВЕЗДИЯ -->
+    <div class="screen" id="game-screen">
+        <div id="const-title" style="color:#6a8bb3;font-size:16px;letter-spacing:5px;margin-bottom:14px;"></div>
+        <div id="const-container">
+            <canvas id="const-canvas" width="320" height="380"></canvas>
+            <div id="stars-layer"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+            <button class="btn" onclick="goMap()">← КАРТА</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════
+//  ДАННЫЕ ИГРЫ — единственное место для изменения контента
+// ════════════════════════════════════════════════════════════
+
+const GAME_DATA = {
+
+    starColors: ['#4488cc','#66aaff','#aa66ff','#ff66cc','#ffcc66','#66ffaa'],
+
+    // SVG пятиконечной звезды (правильный путь)
+    starSVG: `<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+    </svg>`,
+
+    // Созвездия. Добавь новое — оно сразу появится на карте и в игре.
+    constellations: [
+        {
+            id: 'crux',
+            name: 'ЮЖНЫЙ КРЕСТ',
+            color: '#4488ff',        // синий
+            mapX: 160, mapY: 290,
+            unlockCost: 0,
+            clickBonus: 3, autoBonus: 5, starClickBonus: 1,
+            stars: [
+                { x:160, y:40,  price:100  },
+                { x:60,  y:180, price:500  },
+                { x:260, y:180, price:500  },
+                { x:160, y:330, price:2000 },
+            ],
+            lines: [[0,1],[0,2],[1,3],[2,3]],
+        },
+        {
+            id: 'ursa',
+            name: 'БОЛ. МЕДВЕДИЦА',
+            color: '#aa66ff',        // фиолетовый
+            mapX: 80, mapY: 120,
+            unlockCost: 5000,
+            clickBonus: 10, autoBonus: 15, starClickBonus: 2,
+            stars: [
+                { x:40,  y:60,  price:5000  },
+                { x:100, y:90,  price:7000  },
+                { x:140, y:150, price:8000  },
+                { x:185, y:220, price:10000 },
+                { x:280, y:205, price:12000 },
+                { x:255, y:300, price:15000 },
+                { x:175, y:310, price:18000 },
+            ],
+            lines: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]],
+        },
+        {
+            id: 'orion',
+            name: 'ОРИОН',
+            color: '#ffcc44',        // золотой
+            mapX: 240, mapY: 160,
+            unlockCost: 50000,
+            clickBonus: 25, autoBonus: 40, starClickBonus: 5,
+            stars: [
+                { x:100, y:50,  price:30000  },
+                { x:230, y:60,  price:30000  },
+                { x:100, y:180, price:50000  },
+                { x:230, y:180, price:50000  },
+                { x:165, y:230, price:60000  },
+                { x:130, y:310, price:80000  },
+                { x:200, y:310, price:80000  },
+            ],
+            lines: [[0,1],[0,2],[1,3],[2,3],[2,4],[3,4],[4,5],[4,6],[5,6]],
+        },
+        {
+            id: 'scorpius',
+            name: 'СКОРПИОН',
+            color: '#ff4466',        // красный
+            mapX: 260, mapY: 300,
+            unlockCost: 500000,
+            clickBonus: 60, autoBonus: 100, starClickBonus: 10,
+            stars: [
+                { x:160, y:30,  price:200000 },
+                { x:110, y:90,  price:200000 },
+                { x:210, y:90,  price:200000 },
+                { x:80,  y:170, price:300000 },
+                { x:160, y:155, price:250000 },
+                { x:240, y:170, price:300000 },
+                { x:60,  y:270, price:400000 },
+                { x:160, y:250, price:350000 },
+                { x:260, y:270, price:400000 },
+            ],
+            lines: [[0,1],[0,2],[1,3],[1,4],[2,4],[2,5],[3,6],[4,7],[5,8],[6,7],[7,8]],
+        },
+    ],
+
+    // Дерево осколков. Добавь новый узел — появится автоматически.
+    shardTree: [
+        {
+            id: 'click1', row: 0,
+            icon: '⚡', name: 'КВАНТОВЫЙ КЛИК',
+            desc: '+50% к силе клика навсегда',
+            cost: 1, requires: null,
+            apply: (S) => { S.clickPower = Math.ceil(S.clickPower * 1.5); },
+        },
+        {
+            id: 'auto1', row: 0,
+            icon: '🌀', name: 'ВИХРЬ СБОРА',
+            desc: '+50% к авто-сбору навсегда',
+            cost: 1, requires: null,
+            apply: (S) => { S.passiveIncome = Math.ceil(S.passiveIncome * 1.5); },
+        },
+        {
+            id: 'multi1', row: 0,
+            icon: '💠', name: 'ОСКОЛОЧНЫЙ ЩИТ',
+            desc: 'Цены в магазине −20%',
+            cost: 1, requires: null,
+            apply: () => {},  // обрабатывается в getClickPrice/getAutoPrice
+        },
+        {
+            id: 'click2', row: 1,
+            icon: '🌟', name: 'ЗВЁЗДНЫЙ УДАР',
+            desc: '+100% к силе клика',
+            cost: 3, requires: 'click1',
+            apply: (S) => { S.clickPower = Math.ceil(S.clickPower * 2); },
+        },
+        {
+            id: 'auto2', row: 1,
+            icon: '🌌', name: 'ТУМАННОСТЬ',
+            desc: '+100% к авто-сбору',
+            cost: 3, requires: 'auto1',
+            apply: (S) => { S.passiveIncome = Math.ceil(S.passiveIncome * 2); },
+        },
+        {
+            id: 'flash1', row: 1,
+            icon: '⚡', name: 'ЧАСТОТА ВСПЫШЕК',
+            desc: 'Вспышки в 2× чаще',
+            cost: 2, requires: null,
+            apply: () => {},  // учитывается в логике вспышки
+        },
+        {
+            id: 'galaxy', row: 2,
+            icon: '🌠', name: 'ГАЛАКТИКА',
+            desc: '+200% ко всему',
+            cost: 8, requires: 'click2',
+            apply: (S) => { S.clickPower = Math.ceil(S.clickPower * 3); S.passiveIncome = Math.ceil(S.passiveIncome * 3); },
+        },
+    ],
+
+    // Достижения. check(S) → bool. apply(S) — бонус при разблокировке (один раз).
+    achievements: [
+        { id:'first_click',  icon:'👆', name:'ПЕРВЫЙ КЛИК',        desc:'Кликни по звезде',              bonus:'+2 к клику',    check: S => S.stardust >= 1,          apply: S => { S.clickPower += 2; } },
+        { id:'dust_100',     icon:'✨', name:'100 ПЫЛИ',            desc:'Собери 100 пылинок',            bonus:'+5 к клику',    check: S => S.stardust >= 100,        apply: S => { S.clickPower += 5; } },
+        { id:'dust_1k',      icon:'💫', name:'ТЫСЯЧНИК',            desc:'Собери 1 000 пыли',             bonus:'+10 к клику',   check: S => S.stardust >= 1000,       apply: S => { S.clickPower += 10; } },
+        { id:'dust_100k',    icon:'🌟', name:'ЗВЁЗДНЫЙ ШАХТЁР',    desc:'Собери 100 000 пыли',           bonus:'+50 к клику',   check: S => S.stardust >= 100000,     apply: S => { S.clickPower += 50; } },
+        { id:'dust_1m',      icon:'🌠', name:'ГАЛАКТИЧЕСКИЙ',       desc:'Собери 1 000 000 пыли',         bonus:'+200 к клику',  check: S => S.stardust >= 1e6,        apply: S => { S.clickPower += 200; } },
+        { id:'lvl_5',        icon:'⭐', name:'ЗВЁЗДНЫЙ ПУТЬ',       desc:'Достигни 5 уровня',             bonus:'+1 осколок',    check: S => S.level >= 5,             apply: S => { S.shards += 1; } },
+        { id:'lvl_10',       icon:'🌙', name:'ЛУННЫЙ СВЕТ',         desc:'Достигни 10 уровня',            bonus:'+3 осколка',    check: S => S.level >= 10,            apply: S => { S.shards += 3; } },
+        { id:'lvl_25',       icon:'☀️', name:'СОЛНЕЧНЫЙ ВЕТЕР',    desc:'Достигни 25 уровня',            bonus:'+10 осколков',  check: S => S.level >= 25,            apply: S => { S.shards += 10; } },
+        { id:'lvl_50',       icon:'🌌', name:'ПОВЕЛИТЕЛЬ ГАЛАКТИК', desc:'Достигни 50 уровня',            bonus:'+25 осколков',  check: S => S.level >= 50,            apply: S => { S.shards += 25; } },
+        { id:'const_1',      icon:'🔭', name:'ПЕРВОЕ СОЗВЕЗДИЕ',    desc:'Собери любое созвездие',        bonus:'+20 авто/сек',  check: S => S.unlockedStars.some(arr => arr.length > 0 && arr.every(v=>v===1)), apply: S => { S.passiveIncome += 20; } },
+        { id:'const_all',    icon:'🌃', name:'ЗВЁЗДНЫЙ АТЛАС',      desc:'Собери все 4 созвездия',        bonus:'+5 осколков',   check: S => S.unlockedConsts.length >= 4 && S.unlockedStars.every(arr => arr.length > 0 && arr.every(v=>v===1)), apply: S => { S.shards += 5; } },
+        { id:'stars_10',     icon:'⚡', name:'КОЛЛЕКЦИОНЕР',         desc:'Купи 10 звёзд',                 bonus:'+15 к клику',   check: S => S.unlockedStars.reduce((n,a)=>n+a.filter(v=>v===1).length,0) >= 10, apply: S => { S.clickPower += 15; } },
+        { id:'auto_10',      icon:'🌀', name:'ВИХРЬ',                desc:'Авто-сбор 10+/сек',             bonus:'+10 к клику',   check: S => S.passiveIncome >= 10,    apply: S => { S.clickPower += 10; } },
+        { id:'auto_100',     icon:'🌊', name:'ПРИБОЙ ПЫЛИ',          desc:'Авто-сбор 100+/сек',            bonus:'+5 осколков',   check: S => S.passiveIncome >= 100,   apply: S => { S.shards += 5; } },
+        { id:'prestige_1',   icon:'💥', name:'СВЕРХНОВАЯ',           desc:'Соверши первый престиж',        bonus:'+2 осколка',    check: S => S.prestigeCount >= 1,     apply: S => { S.shards += 2; } },
+        { id:'prestige_3',   icon:'🔥', name:'ФЕНИКС',               desc:'Соверши 3 престижа',            bonus:'+10 осколков',  check: S => S.prestigeCount >= 3,     apply: S => { S.shards += 10; } },
+    ],
+
+    // Скины звезды. points — количество лучей, OR/IR — внешний/внутренний радиус.
+    skins: [
+        {
+            id: 'default',
+            name: 'КЛАССИКА',
+            desc: 'Стандартная звезда',
+            bonus: null,
+            price: 0,
+            color: null,
+            glowColor: null,
+            points: 5, OR: 95, IR: 40, DEPTH: 32,
+            lineWidth: 1.5,
+            particles: { count: 7, size: 3, shape: 'circle', trail: false },
+        },
+        {
+            id: 'gold',
+            name: 'ЗОЛОТАЯ ЗВЕЗДА',
+            desc: 'Богатство и мощь',
+            bonus: '+100 к клику и авто-сбору',
+            bonusApply: S => { S.clickPower += 100; S.passiveIncome += 100; },
+            price: 0,
+            color: '#ffcc44',
+            glowColor: 'rgba(255,200,50,.6)',
+            points: 5, OR: 98, IR: 36, DEPTH: 36,
+            lineWidth: 2,
+            particles: { count: 10, size: 4, shape: 'circle', trail: true },
+        },
+        {
+            id: 'crystal',
+            name: 'КРИСТАЛЛ',
+            desc: 'Осколок далёкой галактики',
+            bonus: '+50 к клику, ×1.2 к осколкам',
+            bonusApply: S => { S.clickPower += 50; S.shards = Math.ceil(S.shards * 1.2); },
+            price: 0,
+            color: '#66eeff',
+            glowColor: 'rgba(100,220,255,.5)',
+            points: 6, OR: 92, IR: 54, DEPTH: 28,
+            lineWidth: 1.5,
+            particles: { count: 8, size: 3, shape: 'diamond', trail: false },
+        },
+        {
+            id: 'nova',
+            name: 'СВЕРХНОВАЯ',
+            desc: 'Рождена из взрыва звезды',
+            bonus: '+200 к авто-сбору',
+            bonusApply: S => { S.passiveIncome += 200; },
+            price: 0,
+            color: '#ff4466',
+            glowColor: 'rgba(255,60,80,.6)',
+            points: 8, OR: 95, IR: 44, DEPTH: 30,
+            lineWidth: 2,
+            particles: { count: 12, size: 5, shape: 'spark', trail: true },
+        },
+    ],
+};
+
+// ════════════════════════════════════════════════════════════
+//  ЗАГРУЗКА СОСТОЯНИЯ
+// ════════════════════════════════════════════════════════════
+
+function loadState() {
+    const get    = (k, def) => localStorage.getItem(k) !== null ? JSON.parse(localStorage.getItem(k)) : def;
+    const getNum = (k, def) => { const v = parseFloat(localStorage.getItem(k)); return isNaN(v) ? def : v; };
+    const getInt = (k, def) => { const v = parseInt(localStorage.getItem(k));   return isNaN(v) ? def : v; };
+
+    const S = {
+        stardust:      getNum('stardust', 0),
+        clickPower:    getInt('clickPower', 1),
+        passiveIncome: getNum('passiveIncome', 0),
+        level:         getInt('level', 1),
+        exp:           getNum('exp', 0),
+        shards:        getInt('shards', 0),
+        prestigeCount: getInt('prestigeCount', 0),
+        purchasedNodes: get('purchasedNodes', []),
+        unlockedConsts: get('unlockedConsts', ['crux']),
+        unlockedAchievements: get('unlockedAchievements', []),
+        equippedSkin: localStorage.getItem('equippedSkin') || 'default',
+        ownedSkins:   get('ownedSkins', ['default']),
+        // Задания: activeQuests — текущие 3 задания, questsDate — день генерации
+        activeQuests: get('activeQuests', null),
+        questsDate:   localStorage.getItem('questsDate') || null,
+        dailyClicks:   getInt('dailyClicks',   0),
+        dailyDust:     getNum('dailyDust',     0),
+        dailyStars:    getInt('dailyStars',    0),
+        dailyLevelups: getInt('dailyLevelups', 0),
+        dailyUpgrades: getInt('dailyUpgrades', 0),
+    };
+
+    // Санация unlockedStars: строго массив нужной длины с 0/1
+    let rawUS = null;
+    try { rawUS = JSON.parse(localStorage.getItem('unlockedStars')); } catch(e) {}
+
+    S.unlockedStars = GAME_DATA.constellations.map((c, ci) => {
+        const arr = new Array(c.stars.length).fill(0);
+        if (Array.isArray(rawUS) && Array.isArray(rawUS[ci])) {
+            rawUS[ci].forEach((v, i) => { if (i < arr.length && v === 1) arr[i] = 1; });
+        }
+        return arr;
+    });
+
+    return S;
+}
+
+// ════════════════════════════════════════════════════════════
+//  СОСТОЯНИЕ
+// ════════════════════════════════════════════════════════════
+
+const S = loadState(); // S — единственный объект состояния
+
+// ════════════════════════════════════════════════════════════
+//  СОХРАНЕНИЕ (отдельно от рендера — раз в 3 сек)
+// ════════════════════════════════════════════════════════════
+
+function saveState() {
+    localStorage.setItem('stardust',       S.stardust);
+    localStorage.setItem('clickPower',     S.clickPower);
+    localStorage.setItem('passiveIncome',  S.passiveIncome);
+    localStorage.setItem('level',          S.level);
+    localStorage.setItem('exp',            S.exp);
+    localStorage.setItem('shards',               S.shards);
+    localStorage.setItem('prestigeCount',        S.prestigeCount);
+    localStorage.setItem('purchasedNodes',       JSON.stringify(S.purchasedNodes));
+    localStorage.setItem('unlockedConsts',       JSON.stringify(S.unlockedConsts));
+    localStorage.setItem('unlockedAchievements', JSON.stringify(S.unlockedAchievements));
+    localStorage.setItem('equippedSkin',         S.equippedSkin);
+    localStorage.setItem('ownedSkins',           JSON.stringify(S.ownedSkins));
+    localStorage.setItem('unlockedStars',        JSON.stringify(S.unlockedStars));
+    if (S.activeQuests) {
+        localStorage.setItem('activeQuests',   JSON.stringify(S.activeQuests));
+        localStorage.setItem('questsDate',     S.questsDate);
+        localStorage.setItem('dailyClicks',    S.dailyClicks);
+        localStorage.setItem('dailyDust',      S.dailyDust);
+        localStorage.setItem('dailyStars',     S.dailyStars);
+        localStorage.setItem('dailyLevelups',  S.dailyLevelups);
+        localStorage.setItem('dailyUpgrades',  S.dailyUpgrades);
+    }
+}
+
+const saveInterval = setInterval(saveState, 3000);
+
+// ════════════════════════════════════════════════════════════
+//  ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ════════════════════════════════════════════════════════════
+
+const hasPurchased    = (id) => S.purchasedNodes.includes(id);
+const isConstUnlocked = (id) => S.unlockedConsts.includes(id);
+const isStarUnlocked  = (ci, si) => S.unlockedStars[ci][si] === 1;
+const getStarColor    = () => GAME_DATA.starColors[(S.level - 1) % GAME_DATA.starColors.length];
+
+// Бонус к клику от уровня: +5% за каждый уровень, +20% за каждые 5 уровней
+const getLevelClickMult = () => {
+    const perLevel   = 1 + (S.level - 1) * 0.05;           // +5% за каждый уровень
+    const milestones = Math.floor((S.level - 1) / 5);       // каждые 5 уровней
+    const perMilestone = 1 + milestones * 0.20;             // +20% за каждый milestone
+    return perLevel * perMilestone;
+};
+
+const getMultiplier = () => {
+    let m = 1 + S.shards * 0.1;
+    if (hasPurchased('flash1') && flashActive) m *= 2;
+    return m;
+};
+
+const getClickPrice = () => {
+    const base = Math.floor(50 + (S.clickPower - 1) * 15);
+    return hasPurchased('multi1') ? Math.floor(base * 0.8) : base;
+};
+const getAutoPrice = () => {
+    const base = Math.floor(150 + S.passiveIncome * 20);
+    return hasPurchased('multi1') ? Math.floor(base * 0.8) : base;
+};
+
+let currentConst = 0;
+
+// ════════════════════════════════════════════════════════════
+//  РЕНДЕР UI (только DOM — не сохраняет)
+// ════════════════════════════════════════════════════════════
+
+function render() {
+    // level-up loop
+    while (S.exp >= S.level * 100) {
+        S.exp -= S.level * 100;
+        S.level++;
+        questProgress('levelups', 1);
+        const isMilestone = S.level % 5 === 0;
+        if (isMilestone) {
+            showToast(`🌟 УРОВЕНЬ ${S.level}!\n+20% к клику навсегда\n+1 осколок при престиже`);
+        } else {
+            const bonus = Math.round(getLevelClickMult() * 100 - 100);
+            showToast(`★ УРОВЕНЬ ${S.level}!\nКлик ×${getLevelClickMult().toFixed(2)} (+${bonus}%)`);
+        }
+    }
+
+    const mult = getMultiplier();
+
+    el('hud-dust').textContent   = fmtNum(S.stardust);
+    el('menu-count').textContent = fmtNum(S.stardust);
+    el('lvl-val').textContent    = S.level;
+    el('lvl-bonus').textContent  = '×' + getLevelClickMult().toFixed(2);
+    el('shard-val').textContent  = S.shards;
+    el('mult-val').textContent   = mult.toFixed(1);
+    el('exp-bar-fill').style.width = Math.min(100, S.exp / (S.level * 100) * 100) + '%';
+    el('price-click').textContent  = fmtNum(getClickPrice()) + ' ⭐';
+    el('price-auto').textContent   = fmtNum(getAutoPrice())  + ' ⭐';
+
+    renderSupernova();
+    checkAchievements();
+    if (document.body.className === 'game') renderConstellation();
+    if (document.body.className === 'map')  renderMap();
+}
+
+// Форматирование больших чисел: 1 234 567 → 1.2М
+function fmtNum(n) {
+    n = Math.floor(n);
+    if (n >= 1e9) return (n/1e9).toFixed(1) + 'Г';
+    if (n >= 1e6) return (n/1e6).toFixed(1) + 'М';
+    if (n >= 1e3) return (n/1e3).toFixed(1) + 'К';
+    return String(n);
+}
+
+const el = (id) => document.getElementById(id);
+
+// ════════════════════════════════════════════════════════════
+//  МАГАЗИН
+// ════════════════════════════════════════════════════════════
+
+function buyUpgrade(type) {
+    const price = type === 'click' ? getClickPrice() : getAutoPrice();
+    if (S.stardust < price) { showToast('МАЛО ПЫЛИ!'); return; }
+    S.stardust -= price;
+    if (type === 'click') S.clickPower++; else S.passiveIncome++;
+    questProgress('upgrades', 1);
+    showToast('УЛУЧШЕНО!');
+    render();
+}
+
+function buyMax(type) {
+    let n = 0;
+    while (true) {
+        const p = type === 'click' ? getClickPrice() : getAutoPrice();
+        if (S.stardust < p) break;
+        S.stardust -= p;
+        if (type === 'click') S.clickPower++; else S.passiveIncome++;
+        questProgress('upgrades', 1);
+        n++;
+    }
+    showToast(n > 0 ? `КУПЛЕНО: ${n}` : 'МАЛО ПЫЛИ!');
+    render();
+}
+
+// ════════════════════════════════════════════════════════════
+//  СВЕРХНОВАЯ
+// ════════════════════════════════════════════════════════════
+
+// Базовые осколки + 1 за каждые 5 уровней (milestone бонус)
+function getSupernovaPotential() {
+    const base      = Math.max(1, Math.floor(S.level / 2));
+    const milestone = Math.floor(S.level / 5);
+    return base + milestone;
+}
+
+function isSupernovaReady() {
+    const total    = GAME_DATA.constellations.reduce((s,c) => s + c.stars.length, 0);
+    const unlocked = S.unlockedStars.reduce((s,arr) => s + arr.filter(v => v===1).length, 0);
+    return S.level >= 5 && total > 0 && unlocked >= total;
+}
+
+function renderSupernova() {
+    el('potential-shards').textContent = getSupernovaPotential();
+    el('supernova-panel').classList.toggle('visible', isSupernovaReady());
+}
+
+function triggerSupernova() {
+    const gain = getSupernovaPotential();
+    if (!confirm(`ВЗОРВАТЬ ЗВЕЗДУ?\nПолучите ${gain} осколков. Весь прогресс сбросится!`)) return;
+    const newShards  = S.shards + gain;
+    const nodes      = S.purchasedNodes.slice();
+    const achs       = S.unlockedAchievements.slice();
+    const prestige   = S.prestigeCount + 1;
+    localStorage.clear();
+    localStorage.setItem('shards',               newShards);
+    localStorage.setItem('purchasedNodes',       JSON.stringify(nodes));
+    localStorage.setItem('unlockedAchievements', JSON.stringify(achs));
+    localStorage.setItem('prestigeCount',        prestige);
+    location.reload();
+}
+
+// ════════════════════════════════════════════════════════════
+//  ДЕРЕВО ОСКОЛКОВ
+// ════════════════════════════════════════════════════════════
+
+function openShardTree() {
+    renderShardTree();
+    el('shard-tree').classList.add('open');
+}
+function closeShardTree() { el('shard-tree').classList.remove('open'); }
+
+function renderShardTree() {
+    el('tree-shard-count').textContent = S.shards;
+    const container = el('tree-nodes');
+    container.innerHTML = '';
+
+    // Группируем по row
+    const rows = {};
+    GAME_DATA.shardTree.forEach(node => {
+        if (!rows[node.row]) rows[node.row] = [];
+        rows[node.row].push(node);
+    });
+
+    Object.keys(rows).sort().forEach(row => {
+        const rowEl = document.createElement('div');
+        rowEl.className = 'tree-row';
+        rows[row].forEach(node => {
+            const bought  = hasPurchased(node.id);
+            const canReq  = !node.requires || hasPurchased(node.requires);
+            const canBuy  = !bought && canReq && S.shards >= node.cost;
+            const locked  = !canReq;
+
+            const div = document.createElement('div');
+            div.className = 'tree-node' + (bought ? ' purchased' : '') + (locked ? ' locked' : '');
+            div.innerHTML = `
+                <div class="node-icon">${node.icon}</div>
+                <div class="node-name">${node.name}</div>
+                <div class="node-desc">${node.desc}</div>
+                <div class="node-cost">${bought ? '✓ КУПЛЕНО' : node.cost + ' 💎'}</div>
+            `;
+            if (!bought && !locked) {
+                div.onclick = () => buyShardNode(node.id);
+                if (!canBuy) div.style.opacity = '0.5';
+            }
+            rowEl.appendChild(div);
+        });
+        container.appendChild(rowEl);
+    });
+}
+
+function buyShardNode(id) {
+    const node = GAME_DATA.shardTree.find(n => n.id === id);
+    if (!node || hasPurchased(id)) return;
+    if (node.requires && !hasPurchased(node.requires)) { showToast('СНАЧАЛА КУПИ ПРЕДЫДУЩЕЕ!'); return; }
+    if (S.shards < node.cost) { showToast('МАЛО ОСКОЛКОВ!'); return; }
+    S.shards -= node.cost;
+    S.purchasedNodes.push(id);
+    node.apply(S);
+    showToast(`${node.icon} ${node.name} КУПЛЕНО!`);
+    renderShardTree();
+    render();
+}
+
+// ════════════════════════════════════════════════════════════
+//  КАРТА СОЗВЕЗДИЙ
+// ════════════════════════════════════════════════════════════
+
+let mapTooltipTimer = null;
+
+function renderMap() {
+    const canvas = el('map-canvas');
+    const ctx    = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ── ТУМАН — покрываем незакупленные области ──
+    GAME_DATA.constellations.forEach((c) => {
+        if (isConstUnlocked(c.id)) return;
+        const cx = c.mapX, cy = c.mapY;
+        const grd = ctx.createRadialGradient(cx, cy, 10, cx, cy, 70);
+        grd.addColorStop(0, 'rgba(5,12,30,0.85)');
+        grd.addColorStop(1, 'rgba(5,12,30,0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 70, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    GAME_DATA.constellations.forEach((c, ci) => {
+        const unlocked  = isConstUnlocked(c.id);
+        const completed = unlocked && S.unlockedStars[ci].length > 0 && S.unlockedStars[ci].every(v => v === 1);
+        const cx = c.mapX, cy = c.mapY;
+        const clr = c.color;
+
+        // Свечение для завершённых — в цвете созвездия
+        if (completed) {
+            const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 32);
+            grd.addColorStop(0, clr.replace(')', ',0.35)').replace('rgb', 'rgba'));
+            grd.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.beginPath();
+            ctx.fillStyle = grd;
+            ctx.arc(cx, cy, 32, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // Звезда на карте
+        ctx.globalAlpha = completed ? 1.0 : unlocked ? 0.75 : 0.18;
+        ctx.beginPath();
+        drawMapStar(ctx, cx, cy, 10, 4);
+        ctx.fillStyle   = completed ? clr : unlocked ? clr : '#1a2d44';
+        ctx.strokeStyle = completed ? '#ffffff' : unlocked ? clr : '#0d1a33';
+        ctx.lineWidth   = completed ? 1.5 : 1;
+        ctx.fill();
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+        // Название
+        ctx.font      = '9px Georgia';
+        ctx.fillStyle = completed ? clr : unlocked ? '#8aabcc' : '#1e2d3d';
+        ctx.textAlign = 'center';
+        ctx.fillText(c.name, cx, cy + 22);
+
+        // Цена или статус
+        if (!unlocked) {
+            ctx.font      = '8px sans-serif';
+            ctx.fillStyle = '#2e4060';
+            ctx.fillText(fmtNum(c.unlockCost) + ' ⭐', cx, cy + 33);
+        } else if (completed) {
+            ctx.font      = '8px sans-serif';
+            ctx.fillStyle = clr;
+            ctx.globalAlpha = 0.7;
+            ctx.fillText('✦ СОБРАНО', cx, cy + 33);
+            ctx.globalAlpha = 1;
+        }
+    });
+}
+
+// Рисует пятиконечную звезду на canvas
+function drawMapStar(ctx, cx, cy, outerR, innerR) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+        const a = (i / 10) * Math.PI * 2 - Math.PI / 2;
+        const r = i % 2 === 0 ? outerR : innerR;
+        const x = cx + Math.cos(a) * r;
+        const y = cy + Math.sin(a) * r;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+}
+
+function initMapInteraction() {
+    const canvas = el('map-canvas');
+
+    // На мобильных — тап показывает тултип, второй тап — действие
+    // На десктопе — один клик сразу действует (без hover-тултипа)
+    let pendingTap = null; // { constIndex, timer }
+
+    function handleInteraction(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        const mx   = clientX - rect.left;
+        const my   = clientY - rect.top;
+
+        let found = null, foundCi = -1;
+        GAME_DATA.constellations.forEach((c, ci) => {
+            if (Math.hypot(mx - c.mapX, my - c.mapY) <= 22) { found = c; foundCi = ci; }
+        });
+
+        if (!found) { hideTooltip(); pendingTap = null; return; }
+
+        // Если это повторный тап по тому же созвездию — выполняем действие
+        if (pendingTap && pendingTap.ci === foundCi) {
+            clearTimeout(pendingTap.timer);
+            pendingTap = null;
+            hideTooltip();
+            doConstAction(found, foundCi);
+            return;
+        }
+
+        // Первый тап — показываем тултип
+        if (pendingTap) { clearTimeout(pendingTap.timer); pendingTap = null; }
+        showMapTooltip(found, foundCi);
+        pendingTap = {
+            ci: foundCi,
+            timer: setTimeout(() => { hideTooltip(); pendingTap = null; }, 2000),
+        };
+    }
+
+    function doConstAction(c, ci) {
+        if (isConstUnlocked(c.id)) {
+            currentConst = ci;
+            goGame();
+        } else if (S.stardust >= c.unlockCost) {
+            S.stardust -= c.unlockCost;
+            S.unlockedConsts.push(c.id);
+            showToast(`✦ ${c.name}\nРАЗБЛОКИРОВАНО!`);
+            renderMap(); render();
+        } else {
+            showToast(`НУЖНО ${fmtNum(c.unlockCost)} ⭐`);
+        }
+    }
+
+    function showMapTooltip(c, ci) {
+        const done   = S.unlockedStars[ci].filter(v => v===1).length;
+        const total  = c.stars.length;
+        const status = !isConstUnlocked(c.id)
+            ? `🔒 ${fmtNum(c.unlockCost)} ⭐`
+            : done === total ? '✨ СОБРАНО' : `${done}/${total} звёзд`;
+        const hint = isConstUnlocked(c.id) ? '<br><span style="font-size:9px;color:#4a6081">ТАП ЕЩЁ РАЗ →</span>' : '';
+        el('map-tooltip').innerHTML = `${c.name}<br>${status}${hint}`;
+        el('map-tooltip').classList.add('show');
+    }
+
+    function hideTooltip() { el('map-tooltip').classList.remove('show'); }
+
+    // Touch (мобильные)
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const t = e.changedTouches[0];
+        handleInteraction(t.clientX, t.clientY);
+    }, { passive: false });
+
+    // Click (десктоп — сразу действует, без тултипа)
+    canvas.addEventListener('click', (e) => {
+        if (e.sourceCapabilities && e.sourceCapabilities.firesTouchEvents) return; // игнорируем клик от touch
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        GAME_DATA.constellations.forEach((c, ci) => {
+            if (Math.hypot(mx - c.mapX, my - c.mapY) <= 22) doConstAction(c, ci);
+        });
+    });
+}
+
+// ════════════════════════════════════════════════════════════
+//  ЭКРАН СОЗВЕЗДИЯ
+// ════════════════════════════════════════════════════════════
+
+function renderConstellation() {
+    const cd    = GAME_DATA.constellations[currentConst];
+    const layer = el('stars-layer');
+    const ctx   = el('const-canvas').getContext('2d');
+    const ci    = currentConst;
+    const clr   = cd.color;
+
+    el('const-title').textContent = cd.name;
+    el('const-title').style.color = clr;
+    layer.innerHTML = '';
+    ctx.clearRect(0, 0, 320, 380);
+
+    // Линии
+    for (const [a, b] of cd.lines) {
+        const sa  = cd.stars[a], sb = cd.stars[b];
+        const lit = isStarUnlocked(ci, a) && isStarUnlocked(ci, b);
+        ctx.beginPath();
+        ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y);
+        ctx.strokeStyle = lit ? clr : 'rgba(26,58,119,.2)';
+        ctx.lineWidth   = lit ? 2 : 1;
+        ctx.globalAlpha = lit ? 0.8 : 1;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    }
+
+    // Звёзды
+    cd.stars.forEach((s, i) => {
+        const unlocked = isStarUnlocked(ci, i);
+        const node     = document.createElement('div');
+        node.className = 'star-node' + (unlocked ? ' active' : '');
+        node.style.cssText = `top:${s.y}px;left:${s.x}px;`;
+        // Активные звёзды окрашиваем в цвет созвездия
+        const svgColored = unlocked
+            ? GAME_DATA.starSVG.replace('<svg ', `<svg style="filter:drop-shadow(0 0 8px ${clr})" `)
+                .replace('fill: #0d1520', `fill: ${clr}`) // inline override не сработает — используем data-color
+            : GAME_DATA.starSVG;
+        node.innerHTML = svgColored + `<div class="star-price">${unlocked ? '✨' : fmtNum(s.price)}</div>`;
+        if (unlocked) node.querySelector('svg').style.fill = clr;
+        node.onclick = () => buyStar(i, s.price);
+        layer.appendChild(node);
+    });
+}
+
+function buyStar(idx, price) {
+    const ci = currentConst;
+    if (isStarUnlocked(ci, idx)) return;
+    if (S.stardust < price) { showToast('МАЛО ПЫЛИ!'); return; }
+
+    S.stardust -= price;
+    S.unlockedStars[ci][idx] = 1;
+    questProgress('stars', 1);
+
+    const cd = GAME_DATA.constellations[ci];
+    S.clickPower += cd.starClickBonus;
+
+    const allDone = S.unlockedStars[ci].length > 0 && S.unlockedStars[ci].every(v => v === 1);
+    if (allDone) {
+        S.clickPower    += cd.clickBonus;
+        S.passiveIncome += cd.autoBonus;
+        // Сначала рендерим финальное состояние, потом запускаем анимацию
+        render();
+        animateConstellationComplete(ci);
+    } else {
+        showToast(`ЗВЕЗДА ЗАЖГЛАСЬ! +${cd.starClickBonus} к клику`);
+        render();
+    }
+}
+
+// Анимация сборки — линии вспыхивают по очереди, потом финальная вспышка
+function animateConstellationComplete(ci) {
+    const cd  = GAME_DATA.constellations[ci];
+    const ctx = el('const-canvas').getContext('2d');
+    const clr = cd.color;
+
+    // Разбираем линии на шаги
+    const lines = cd.lines;
+    let step = 0;
+
+    function flashLine() {
+        if (step >= lines.length) {
+            // Все линии прошли — финальная вспышка всего созвездия
+            finalFlash();
+            return;
+        }
+        const [a, b] = lines[step];
+        const sa = cd.stars[a], sb = cd.stars[b];
+
+        // Рисуем яркую вспышку линии
+        ctx.beginPath();
+        ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth   = 4;
+        ctx.globalAlpha = 1;
+        ctx.stroke();
+
+        // Гасим обратно до цвета через 200мс
+        setTimeout(() => {
+            ctx.beginPath();
+            ctx.moveTo(sa.x, sa.y); ctx.lineTo(sb.x, sb.y);
+            ctx.strokeStyle = clr;
+            ctx.lineWidth   = 2;
+            ctx.globalAlpha = 0.8;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            step++;
+            setTimeout(flashLine, 120);
+        }, 200);
+    }
+
+    function finalFlash() {
+        // Вспышка на всех звёздах
+        const layer = el('stars-layer');
+        layer.querySelectorAll('.star-node.active svg').forEach(svg => {
+            svg.style.transition = 'filter .1s';
+            svg.style.filter = 'drop-shadow(0 0 20px #ffffff) brightness(3)';
+            setTimeout(() => {
+                svg.style.filter = `drop-shadow(0 0 10px ${clr})`;
+            }, 300);
+        });
+
+        // Частицы от каждой звезды
+        cd.stars.forEach(s => {
+            const rect   = el('const-container').getBoundingClientRect();
+            spawnBurst(rect.left + s.x, rect.top + s.y, clr);
+        });
+
+        setTimeout(() => {
+            showToast(`✦ ${cd.name} СОБРАНО!\n+${cd.clickBonus} клик  +${cd.autoBonus} авто`);
+        }, 400);
+    }
+
+    // Небольшая задержка перед стартом чтобы рендер успел отработать
+    setTimeout(flashLine, 150);
+}
+
+// Выброс частиц из точки (для финальной вспышки созвездия)
+function spawnBurst(x, y, clr) {
+    for (let i = 0; i < 10; i++) {
+        const p     = document.createElement('div');
+        const angle = (i / 10) * Math.PI * 2;
+        const dist  = 30 + Math.random() * 50;
+        p.style.cssText = `position:fixed;width:3px;height:3px;border-radius:50%;pointer-events:none;z-index:1000;background:${clr};box-shadow:0 0 6px ${clr};left:${x}px;top:${y}px;`;
+        document.body.appendChild(p);
+        p.animate(
+            [{transform:'scale(1)',opacity:1},
+             {transform:`translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(0)`,opacity:0}],
+            {duration:700, easing:'ease-out'}
+        ).onfinish = () => p.remove();
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//  ЗВЁЗДНАЯ ВСПЫШКА (случайный буст)
+// ════════════════════════════════════════════════════════════
+
+let flashActive   = false;
+let flashProgress = 0; // 0..1 (убывает)
+
+function scheduleFlash() {
+    // Базовый интервал 3–7 минут, с веткой flash1 — 1.5–3.5 минуты
+    const base = hasPurchased('flash1') ? 90 : 180;
+    const delay = (base + Math.random() * 240) * 1000;
+    setTimeout(startFlash, delay);
+}
+
+function startFlash() {
+    flashActive   = true;
+    flashProgress = 1;
+    el('flash-label').classList.add('show');
+    showToast('⚡ ЗВЁЗДНАЯ ВСПЫШКА!\nБОНУС ×5 НА 15 СЕКУНД!');
+
+    const duration = 15000; // 15 сек
+    const step     = 100;
+    const interval = setInterval(() => {
+        flashProgress -= step / duration;
+        if (flashProgress <= 0) {
+            flashProgress = 0;
+            flashActive   = false;
+            el('flash-bar').style.transform = 'scaleX(0)';
+            el('flash-label').classList.remove('show');
+            clearInterval(interval);
+            scheduleFlash(); // планируем следующую
+        }
+        el('flash-bar').style.transform = `scaleX(${flashProgress})`;
+    }, step);
+}
+
+// ════════════════════════════════════════════════════════════
+//  ЕЖЕДНЕВНЫЕ ЗАДАНИЯ
+// ════════════════════════════════════════════════════════════
+
+// Пул всех возможных заданий — при каждом обновлении случайно выбираем 3
+const QUEST_POOL = [
+    { id:'q_click50',   icon:'👆', name:'ПЕРВЫЕ ШАГИ',     desc:'Кликни 50 раз',           goal: 50,  type:'clicks',   reward: { shards:1, label:'1 осколок' } },
+    { id:'q_click200',  icon:'✊', name:'ЗВЁЗДНЫЙ КУЛАК',   desc:'Кликни 200 раз',          goal: 200, type:'clicks',   reward: { shards:2, label:'2 осколка' } },
+    { id:'q_click500',  icon:'💥', name:'МЕТЕОРИТНЫЙ ДОЖДЬ',desc:'Кликни 500 раз',          goal: 500, type:'clicks',   reward: { shards:5, label:'5 осколков' } },
+    { id:'q_dust500',   icon:'💨', name:'ПЫЛЕСБОРНИК',      desc:'Собери 500 пыли за день', goal: 500,   type:'dust',   reward: { shards:1, label:'1 осколок' } },
+    { id:'q_dust5k',    icon:'🌪️', name:'ПЫЛЕВОЙ ВИХРЬ',   desc:'Собери 5 000 пыли',       goal: 5000,  type:'dust',   reward: { shards:2, label:'2 осколка' } },
+    { id:'q_dust50k',   icon:'🌌', name:'ТУМАННОСТЬ',       desc:'Собери 50 000 пыли',      goal: 50000, type:'dust',   reward: { shards:5, label:'5 осколков' } },
+    { id:'q_star1',     icon:'⭐', name:'ЗАЖГИ ЗВЕЗДУ',     desc:'Купи 1 звезду',           goal: 1,   type:'stars',    reward: { shards:1, label:'1 осколок' } },
+    { id:'q_star3',     icon:'🌟', name:'ЗВЁЗДНАЯ ТРОЙКА',  desc:'Купи 3 звезды',           goal: 3,   type:'stars',    reward: { shards:3, label:'3 осколка' } },
+    { id:'q_lvlup1',    icon:'📈', name:'РОСТ',             desc:'Повысь уровень 1 раз',    goal: 1,   type:'levelups', reward: { shards:1, label:'1 осколок' } },
+    { id:'q_lvlup3',    icon:'🚀', name:'СТРЕМИТЕЛЬНЫЙ',    desc:'Повысь уровень 3 раза',   goal: 3,   type:'levelups', reward: { shards:3, label:'3 осколка' } },
+    { id:'q_shop3',     icon:'🛒', name:'ПОКУПАТЕЛЬ',       desc:'Купи 3 улучшения',        goal: 3,   type:'upgrades', reward: { shards:2, label:'2 осколка' } },
+    { id:'q_shop10',    icon:'💎', name:'ТОРГОВЕЦ ЗВЁЗД',   desc:'Купи 10 улучшений',       goal: 10,  type:'upgrades', reward: { shards:4, label:'4 осколка' } },
+];
+
+// Получаем сегодняшнюю дату в формате YYYY-MM-DD
+function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+// Генерируем 3 случайных задания на день (детерминированно по дате)
+function generateQuests(dateKey) {
+    // Простой seeded shuffle по дате чтобы каждый день были разные задания
+    const seed  = dateKey.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    const pool  = [...QUEST_POOL];
+    let   s     = seed;
+    const rand  = () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return (s >>> 0) / 0xffffffff; };
+    pool.sort(() => rand() - 0.5);
+    return pool.slice(0, 3).map(q => ({
+        ...q,
+        progress: 0,
+        claimed:  false,
+    }));
+}
+
+// Проверяем не истёк ли день — если да, обновляем задания
+function refreshQuestsIfNeeded() {
+    const today = todayKey();
+    if (S.questsDate !== today || !S.activeQuests) {
+        S.activeQuests = generateQuests(today);
+        S.questsDate   = today;
+        // Сбрасываем дневные счётчики
+        S.dailyClicks   = 0;
+        S.dailyDust     = 0;
+        S.dailyStars    = 0;
+        S.dailyLevelups = 0;
+        S.dailyUpgrades = 0;
+    }
+}
+
+// Обновляем прогресс заданий по типу
+function questProgress(type, amount = 1) {
+    if (!S.activeQuests) return;
+    const key = {
+        clicks:   'dailyClicks',
+        dust:     'dailyDust',
+        stars:    'dailyStars',
+        levelups: 'dailyLevelups',
+        upgrades: 'dailyUpgrades',
+    }[type];
+    if (!key) return;
+    S[key] = (S[key] || 0) + amount;
+
+    // Синхронизируем прогресс заданий с дневными счётчиками
+    S.activeQuests.forEach(q => {
+        if (q.claimed) return;
+        const val = {
+            clicks:   S.dailyClicks,
+            dust:     S.dailyDust,
+            stars:    S.dailyStars,
+            levelups: S.dailyLevelups,
+            upgrades: S.dailyUpgrades,
+        }[q.type] || 0;
+        q.progress = Math.min(q.goal, val);
+    });
+}
+
+function claimQuest(idx) {
+    const q = S.activeQuests[idx];
+    if (!q || q.claimed || q.progress < q.goal) return;
+    q.claimed = true;
+    S.shards += q.reward.shards;
+    showToast(`✦ ЗАДАНИЕ ВЫПОЛНЕНО!\n${q.name}\n+${q.reward.label}`);
+    renderQuests();
+    render();
+}
+
+function openQuests() {
+    refreshQuestsIfNeeded();
+    renderQuests();
+    el('quests-panel').classList.add('open');
+}
+function closeQuests() { el('quests-panel').classList.remove('open'); }
+
+function renderQuests() {
+    const list = el('quests-list');
+    list.innerHTML = '';
+
+    // Таймер до следующего обновления
+    const now        = new Date();
+    const midnight   = new Date(now); midnight.setHours(24, 0, 0, 0);
+    const secsLeft   = Math.floor((midnight - now) / 1000);
+    const h = String(Math.floor(secsLeft / 3600)).padStart(2,'0');
+    const m = String(Math.floor((secsLeft % 3600) / 60)).padStart(2,'0');
+    const s = String(secsLeft % 60).padStart(2,'0');
+    el('quests-timer').textContent = `${h}:${m}:${s}`;
+
+    if (!S.activeQuests) return;
+
+    S.activeQuests.forEach((q, i) => {
+        const pct  = Math.min(100, Math.floor(q.progress / q.goal * 100));
+        const done = q.progress >= q.goal;
+        const card = document.createElement('div');
+        card.className = 'quest-card' + (q.claimed ? ' claimed' : done ? ' done' : '');
+        card.innerHTML = `
+            <div class="quest-header">
+                <div class="quest-icon">${q.icon}</div>
+                <div>
+                    <div class="quest-name">${q.name}</div>
+                    <div class="quest-desc">${q.desc}</div>
+                </div>
+            </div>
+            <div class="quest-progress-wrap">
+                <div class="quest-progress-fill" style="width:${pct}%"></div>
+            </div>
+            <div class="quest-footer">
+                <div class="quest-reward">🏆 ${q.reward.label}</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="color:#4a6081;font-size:9px;">${fmtNum(q.progress)}/${fmtNum(q.goal)}</span>
+                    <button class="quest-claim" onclick="claimQuest(${i})" ${!done || q.claimed ? 'disabled' : ''}>
+                        ${q.claimed ? 'ПОЛУЧЕНО' : done ? 'ЗАБРАТЬ' : 'ЖДИ'}
+                    </button>
+                </div>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+// Обновляем таймер каждую секунду пока панель открыта
+setInterval(() => {
+    if (el('quests-panel').classList.contains('open')) {
+        refreshQuestsIfNeeded();
+        renderQuests();
+    }
+}, 1000);
+
+// ════════════════════════════════════════════════════════════
+//  СКИНЫ ЗВЕЗДЫ
+// ════════════════════════════════════════════════════════════
+
+const getActiveSkin = () => GAME_DATA.skins.find(s => s.id === S.equippedSkin) || GAME_DATA.skins[0];
+
+function openSkinsPanel() { renderSkinsPanel(); el('skins-panel').classList.add('open'); }
+function closeSkinsPanel() { el('skins-panel').classList.remove('open'); }
+
+function renderSkinsPanel() {
+    const grid = el('skins-grid');
+    grid.innerHTML = '';
+    GAME_DATA.skins.forEach(skin => {
+        const owned    = S.ownedSkins.includes(skin.id);
+        const equipped = S.equippedSkin === skin.id;
+
+        const card = document.createElement('div');
+        card.className = 'skin-card' + (equipped ? ' equipped' : '');
+
+        // Превью — canvas создаём первым и НЕ трогаем innerHTML после
+        const previewCanvas = document.createElement('canvas');
+        previewCanvas.className = 'skin-preview';
+        previewCanvas.width  = 80;
+        previewCanvas.height = 80;
+
+        const name = document.createElement('div');
+        name.className = 'skin-name';
+        name.textContent = skin.name;
+
+        const desc = document.createElement('div');
+        desc.className = 'skin-desc';
+        desc.textContent = skin.desc;
+
+        const bonus = document.createElement('div');
+        bonus.className = 'skin-bonus';
+        bonus.textContent = skin.bonus || 'Базовый скин';
+
+        const btnLabel = equipped ? 'НАДЕТА' : owned ? 'НАДЕТЬ' : 'ПОЛУЧИТЬ';
+        const btnClass = equipped ? 'active'  : owned ? 'equip'  : 'free';
+        const btn = document.createElement('button');
+        btn.className = `skin-btn ${btnClass}`;
+        btn.textContent = btnLabel;
+        if (!equipped) btn.onclick = () => handleSkinBtn(skin.id);
+
+        card.appendChild(previewCanvas);
+        card.appendChild(name);
+        card.appendChild(desc);
+        card.appendChild(bonus);
+        card.appendChild(btn);
+        grid.appendChild(card);
+
+        // Рисуем превью ПОСЛЕ добавления в DOM
+        requestAnimationFrame(() => drawSkinPreview(previewCanvas, skin));
+    });
+}
+
+// Рисует статичное превью скина на canvas
+function drawSkinPreview(canvas, skin) {
+    canvas.width  = 100;
+    canvas.height = 100;
+    const ctx = canvas.getContext('2d');
+    const CX = 50, CY = 50;
+    const color = skin.color || '#4488cc';
+    const pts   = skin.points;
+    const OR    = 34, IR = Math.round(OR * (skin.IR / skin.OR));
+
+    ctx.clearRect(0, 0, 100, 100);
+
+    // Внешнее свечение
+    const grd = ctx.createRadialGradient(CX, CY, 0, CX, CY, OR + 8);
+    const gc  = skin.glowColor || 'rgba(68,136,204,.35)';
+    grd.addColorStop(0, gc);
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(CX, CY, OR + 8, 0, Math.PI*2); ctx.fill();
+
+    // Звезда
+    ctx.beginPath();
+    for (let i = 0; i < pts * 2; i++) {
+        const a = (i / (pts * 2)) * Math.PI * 2 - Math.PI / 2;
+        const r = i % 2 === 0 ? OR : IR;
+        const x = CX + Math.cos(a) * r, y = CY + Math.sin(a) * r;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = skin.lineWidth + 0.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur  = 14;
+    ctx.stroke();
+    ctx.shadowBlur  = 0;
+
+    // Внутреннее заполнение (лёгкое)
+    ctx.fillStyle = color.replace(')', ', 0.08)').replace('rgb', 'rgba').replace('#', 'rgba(').replace('rgba(', 'rgba(').replace(/rgba\(([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2}), 0.08\)/, (_, r, g, b) =>
+        `rgba(${parseInt(r,16)},${parseInt(g,16)},${parseInt(b,16)},0.08)`);
+    ctx.fill();
+}
+
+function handleSkinBtn(id) {
+    const skin  = GAME_DATA.skins.find(s => s.id === id);
+    const owned = S.ownedSkins.includes(id);
+    if (!skin) return;
+
+    if (!owned) {
+        // Получаем бесплатно + применяем бонус один раз
+        S.ownedSkins.push(id);
+        if (skin.bonusApply) skin.bonusApply(S);
+        showToast(`✨ СКИН ПОЛУЧЕН!\n${skin.name}${skin.bonus ? '\n' + skin.bonus : ''}`);
+    }
+    // Надеваем
+    S.equippedSkin = id;
+    renderSkinsPanel();
+    render();
+}
+
+// ════════════════════════════════════════════════════════════
+//  ДОСТИЖЕНИЯ
+// ════════════════════════════════════════════════════════════
+
+let achNotifyTimer = null;
+
+// Проверяем все достижения — вызывается в render()
+function checkAchievements() {
+    GAME_DATA.achievements.forEach(ach => {
+        if (S.unlockedAchievements.includes(ach.id)) return; // уже есть
+        if (!ach.check(S)) return;                            // условие не выполнено
+        // Разблокируем!
+        S.unlockedAchievements.push(ach.id);
+        ach.apply(S);
+        showAchNotify(ach);
+    });
+}
+
+function showAchNotify(ach) {
+    el('ach-n-icon').textContent = ach.icon;
+    el('ach-n-name').textContent = ach.name + ' — ' + ach.bonus;
+    const notify = el('ach-notify');
+    notify.classList.add('show');
+    clearTimeout(achNotifyTimer);
+    achNotifyTimer = setTimeout(() => notify.classList.remove('show'), 3500);
+}
+
+function openAchievements() {
+    renderAchievements();
+    el('achievements-panel').classList.add('open');
+}
+function closeAchievements() { el('achievements-panel').classList.remove('open'); }
+
+function renderAchievements() {
+    const grid  = el('ach-grid');
+    const total = GAME_DATA.achievements.length;
+    const done  = S.unlockedAchievements.length;
+    el('ach-count').textContent = done;
+    el('ach-total').textContent = total;
+    grid.innerHTML = '';
+
+    GAME_DATA.achievements.forEach(ach => {
+        const unlocked = S.unlockedAchievements.includes(ach.id);
+        const card = document.createElement('div');
+        card.className = 'ach-card ' + (unlocked ? 'unlocked' : 'locked');
+        card.innerHTML = `
+            <div class="ach-icon">${ach.icon}</div>
+            <div class="ach-name">${ach.name}</div>
+            <div class="ach-desc">${unlocked ? ach.desc : '???'}</div>
+            <div class="ach-bonus">${unlocked ? ach.bonus : '🔒'}</div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+// ════════════════════════════════════════════════════════════
+//  НАВИГАЦИЯ
+// ════════════════════════════════════════════════════════════
+
+function goMenu()  { document.body.className = 'menu'; render(); }
+function goShop()  { document.body.className = 'shop'; render(); }
+function goMap()   { document.body.className = 'map';  renderMap(); render(); }
+function goGame()  { document.body.className = 'game'; renderConstellation(); render(); }
+
+function openResetDialog()  { el('reset-dialog').classList.add('open'); }
+function closeResetDialog() { el('reset-dialog').classList.remove('open'); }
+function confirmReset() {
+    closeResetDialog();
+    clearInterval(saveInterval); // останавливаем автосохранение — иначе S перезапишет localStorage до reload
+    localStorage.clear();
+    location.reload();
+}
+function hardReset() { openResetDialog(); }
+
+// ════════════════════════════════════════════════════════════
+//  ТОСТ
+// ════════════════════════════════════════════════════════════
+
+let toastTimer = null;
+function showToast(text) {
+    const t = el('toast');
+    t.innerHTML = text.replace(/\n/g, '<br>');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ════════════════════════════════════════════════════════════
+//  ВИЗУАЛЬНЫЕ ЭФФЕКТЫ КЛИКА
+// ════════════════════════════════════════════════════════════
+
+function spawnJuice(x, y) {
+    const skin   = getActiveSkin();
+    const clr    = flashActive ? '#ffcc66' : (skin.color || getStarColor());
+    const earned = Math.ceil(S.clickPower * getMultiplier() * getLevelClickMult() * (flashActive ? 5 : 1));
+    const count  = skin.particles.count;
+    const size   = skin.particles.size;
+    const trail  = skin.particles.trail;
+    const shape  = skin.particles.shape;
+
+    for (let i = 0; i < count; i++) {
+        const p     = document.createElement('div');
+        const angle = Math.random() * Math.PI * 2;
+        const dist  = 35 + Math.random() * (trail ? 70 : 45);
+        const br    = shape === 'diamond' ? '2px' : shape === 'spark' ? '1px' : '50%';
+        const szW   = shape === 'spark' ? 2 : size;
+        const szH   = shape === 'spark' ? size * 3 : size;
+        p.style.cssText = `position:fixed;width:${szW}px;height:${szH}px;border-radius:${br};pointer-events:none;z-index:1000;background:${clr};box-shadow:0 0 ${size*2}px ${clr};left:${x}px;top:${y}px;`;
+        document.body.appendChild(p);
+        const tx = Math.cos(angle)*dist, ty = Math.sin(angle)*dist;
+        p.animate(
+            [{transform:'scale(1) rotate(0deg)',opacity:1},
+             {transform:`translate(${tx}px,${ty}px) scale(0) rotate(${trail?180:0}deg)`,opacity:0}],
+            {duration: trail ? 750 : 550, easing:'ease-out'}
+        ).onfinish = () => p.remove();
+    }
+
+    const t = document.createElement('div');
+    t.textContent = `+${fmtNum(earned)}`;
+    t.style.cssText = `position:fixed;font-weight:bold;font-size:20px;pointer-events:none;z-index:1001;color:${clr};text-shadow:0 0 8px ${clr};left:${x}px;top:${y-20}px;`;
+    document.body.appendChild(t);
+    t.animate(
+        [{transform:'translateY(0)',opacity:1},{transform:'translateY(-60px)',opacity:0}],
+        {duration:750, easing:'ease-out'}
+    ).onfinish = () => t.remove();
+}
+
+// ════════════════════════════════════════════════════════════
+//  3D ЗВЕЗДА (меню)
+// ════════════════════════════════════════════════════════════
+
+(function init3DStar() {
+    const canvas = el('star-canvas');
+    const ctx    = canvas.getContext('2d');
+    const W=300, H=300, CX=150, CY=150;
+
+    // Строим вершины по параметрам скина
+    function buildVerts(skin) {
+        const f=[], b=[], pts=skin.points;
+        for (let i=0; i<pts*2; i++) {
+            const a = (i/(pts*2))*Math.PI*2 - Math.PI/2;
+            const r = i%2===0 ? skin.OR : skin.IR;
+            f.push({x:Math.cos(a)*r, y:Math.sin(a)*r, z: skin.DEPTH/2});
+            b.push({x:Math.cos(a)*r, y:Math.sin(a)*r, z:-skin.DEPTH/2});
+        }
+        return {f, b};
+    }
+
+    let ry = 0;
+    const rotY = (v,a) => ({x:v.x*Math.cos(a)+v.z*Math.sin(a), y:v.y, z:-v.x*Math.sin(a)+v.z*Math.cos(a)});
+    const proj = v => { const s=400/(400+v.z+150); return {x:CX+v.x*s, y:CY+v.y*s}; };
+
+    canvas.onclick = (e) => {
+        const gain   = S.clickPower * getMultiplier() * getLevelClickMult();
+        const actual = flashActive ? gain * 5 : gain;
+        S.stardust += actual;
+        S.exp      += 1;
+        questProgress('clicks', 1);
+        questProgress('dust', actual);
+        render();
+        spawnJuice(e.clientX, e.clientY);
+        canvas.style.transform = 'scale(0.93)';
+        setTimeout(() => canvas.style.transform='scale(1)', 60);
+    };
+
+    function draw() {
+        ctx.clearRect(0,0,W,H);
+        ry += 0.02;
+
+        const skin = getActiveSkin();
+        const V    = buildVerts(skin);
+        const pf   = V.f.map(v=>proj(rotY(v,ry)));
+        const pb   = V.b.map(v=>proj(rotY(v,ry)));
+
+        const color = flashActive ? '#ffcc66' : (skin.color || getStarColor());
+
+        // Свечение под звездой
+        if (skin.glowColor && !flashActive) {
+            const grd = ctx.createRadialGradient(CX,CY,0,CX,CY,skin.OR*0.6);
+            grd.addColorStop(0, skin.glowColor);
+            grd.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grd;
+            ctx.beginPath(); ctx.arc(CX,CY,skin.OR*0.6,0,Math.PI*2); ctx.fill();
+        }
+
+        ctx.strokeStyle  = color;
+        ctx.lineWidth    = skin.lineWidth;
+        ctx.shadowColor  = color;
+        ctx.shadowBlur   = 12;
+        ctx.beginPath();
+        const pts = skin.points;
+        for (let i=0; i<pf.length; i++) {
+            const n=(i+1)%pf.length;
+            ctx.moveTo(pf[i].x,pf[i].y); ctx.lineTo(pf[n].x,pf[n].y);
+            ctx.moveTo(pb[i].x,pb[i].y); ctx.lineTo(pb[n].x,pb[n].y);
+            ctx.moveTo(pf[i].x,pf[i].y); ctx.lineTo(pb[i].x,pb[i].y);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        requestAnimationFrame(draw);
+    }
+    draw();
+})();
+
+// ════════════════════════════════════════════════════════════
+//  ФОНОВЫЕ ЗВЁЗДЫ
+// ════════════════════════════════════════════════════════════
+
+(function initBgStars() {
+    const canvas = el('bg-stars');
+    const ctx    = canvas.getContext('2d');
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const stars = Array.from({length:70}, () => ({
+        x: Math.random()*canvas.width,
+        y: Math.random()*canvas.height,
+        phase: Math.random()*Math.PI*2,
+    }));
+
+    function draw() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        stars.forEach(s => {
+            s.phase += 0.008;
+            ctx.fillStyle = `rgba(255,255,255,${Math.abs(Math.sin(s.phase))*0.18})`;
+            ctx.fillRect(s.x, s.y, 2, 2);
+        });
+        requestAnimationFrame(draw);
+    }
+    draw();
+})();
+
+// ════════════════════════════════════════════════════════════
+//  ПАССИВНЫЙ ДОХОД (10×/сек) + РЕНДЕР-ТИК (10×/сек)
+// ════════════════════════════════════════════════════════════
+
+setInterval(() => {
+    if (S.passiveIncome > 0) {
+        const gain = (S.passiveIncome / 10) * getMultiplier() * getLevelClickMult();
+        S.stardust += flashActive ? gain * 5 : gain;
+        render();
+    }
+}, 100);
+
+// ════════════════════════════════════════════════════════════
+//  СТАРТ
+// ════════════════════════════════════════════════════════════
+
+initMapInteraction();
+refreshQuestsIfNeeded();
+scheduleFlash();
+render();
+</script>
+</body>
+</html>
